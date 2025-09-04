@@ -6,6 +6,37 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine, text
+from urllib.parse import quote_plus
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+
+def build_db_url():
+    # Parçalı secrets varsa buradan kur
+    if "db" in st.secrets:
+        s = st.secrets["db"]
+        user = s["user"]
+        pwd  = quote_plus(s["password"])   # özel karakterleri güvenli hale getirir
+        host = s["host"]
+        port = s.get("port", "6543")       # Supabase pooler
+        name = s["name"]
+        ssl  = s.get("sslmode", "require")
+        return f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{name}?sslmode={ssl}"
+    # Aksi halde tek satır db_url veya env
+    return st.secrets.get("db_url", os.getenv("DB_URL", ""))
+
+DB_URL = build_db_url()
+if not DB_URL:
+    st.error("Veritabanı bağlantısı bulunamadı. Secrets’te db_url ya da [db] yok.")
+    st.stop()
+
+# (İsteğe bağlı) Bağlantı testi
+try:
+    engine = create_engine(DB_URL, pool_pre_ping=True)
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+except OperationalError:
+    st.error("Veritabanına bağlanılamadı. host/port/ssl ayarlarını kontrol edin (Supabase için port 6543 ve sslmode=require).")
+    st.stop()
 
 # ------------------------------------------------------
 # Sabitler
