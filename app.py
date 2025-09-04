@@ -302,74 +302,134 @@ with st.expander("➕ Yeni Kayıt Ekle"):
             st.rerun()
 
 # --------------------- Düzenleme (admin) ------------------------
-st.subheader("Kayıt Düzenle")
+# --------------------- Düzenleme (admin) ------------------------
 if role != "admin":
     st.info("Kayıt düzenleme yalnızca admin için açıktır.")
 else:
-    if df.empty:
-        st.warning("Düzenlenecek kayıt yok.")
-    else:
-        rid = st.selectbox("Kayıt seç (ID)", df["id"], key="edit_rid")
-        rec = df[df["id"] == rid].iloc[0]
+    with st.expander("✏️ Kayıt Düzenle", expanded=False):  # <— gizlenebilir
+        if df.empty:
+            st.warning("Düzenlenecek kayıt yok.")
+        else:
+            rid = st.selectbox("Kayıt seç (ID)", df["id"], key="edit_rid")
+            rec = df[df["id"] == rid].iloc[0]
 
-        c1, c2, c3 = st.columns(3)
-        e_bb   = c1.text_input("BB No", rec["BB No"] or "", key=f"edit_bb_{rid}")
-        e_sasi = c2.text_input("Şasi No", rec["Şasi No"] or "", key=f"edit_sasi_{rid}")
-        idx_arac = ARAC_TIPI.index(rec["Araç Tipi"]) if rec["Araç Tipi"] in ARAC_TIPI else 0
-        e_arac = c3.selectbox("Araç Tipi", ARAC_TIPI, index=idx_arac, key=f"edit_arac_{rid}")
+            c1, c2, c3 = st.columns(3)
+            e_bb   = c1.text_input("BB No", rec["BB No"] or "", key=f"edit_bb_{rid}")
+            e_sasi = c2.text_input("Şasi No", rec["Şasi No"] or "", key=f"edit_sasi_{rid}")
+            idx_arac = ARAC_TIPI.index(rec["Araç Tipi"]) if rec["Araç Tipi"] in ARAC_TIPI else 0
+            e_arac = c3.selectbox("Araç Tipi", ARAC_TIPI, index=idx_arac, key=f"edit_arac_{rid}")
 
-        c4, c5, c6 = st.columns(3)
-        e_isemri = c4.text_input("İş Emri No", rec["İş Emri No"] or "", key=f"edit_isemri_{rid}")
-        ds = (rec["PDI Yapılış Tarihi"] or "01-01-2000").split(" ")[0]
-        d_default = pd.to_datetime(ds, format="%d-%m-%Y", errors="coerce").date() if ds else date.today()
-        e_tarih = c5.date_input("PDI Yapılış Tarihi", value=d_default,
-                                key=f"edit_tarih_{rid}", format="DD.MM.YYYY")
-        idx_alt = ALT_GRUP.index(rec["Alt Grup"]) if rec["Alt Grup"] in ALT_GRUP else 0
-        e_alt = c6.selectbox("Alt Grup", ALT_GRUP, index=idx_alt, key=f"edit_alt_{rid}")
+            c4, c5, c6 = st.columns(3)
+            e_isemri = c4.text_input("İş Emri No", rec["İş Emri No"] or "", key=f"edit_isemri_{rid}")
+            ds = (rec["PDI Yapılış Tarihi"] or "01-01-2000").split(" ")[0]
+            d_default = pd.to_datetime(ds, format="%d-%m-%Y", errors="coerce").date() if ds else date.today()
+            e_tarih = c5.date_input("PDI Yapılış Tarihi", value=d_default,
+                                    key=f"edit_tarih_{rid}", format="DD.MM.YYYY")
+            idx_alt = ALT_GRUP.index(rec["Alt Grup"]) if rec["Alt Grup"] in ALT_GRUP else 0
+            e_alt = c6.selectbox("Alt Grup", ALT_GRUP, index=idx_alt, key=f"edit_alt_{rid}")
 
-        e_tespit = st.text_area("Tespitler", rec["Tespitler"] or "", height=120, key=f"edit_tespit_{rid}")
-        mevcut_hk = [h.strip() for h in (rec["Hata Konumu"] or "").split(",") if h.strip()]
-        e_hk = st.multiselect("Hata Konumu", HATA_KONUM,
-                              default=[h for h in mevcut_hk if h in HATA_KONUM],
-                              key=f"edit_hata_{rid}")
+            e_tespit = st.text_area("Tespitler", rec["Tespitler"] or "", height=120, key=f"edit_tespit_{rid}")
+            mevcut_hk = [h.strip() for h in (rec["Hata Konumu"] or "").split(",") if h.strip()]
+            e_hk = st.multiselect("Hata Konumu", HATA_KONUM,
+                                  default=[h for h in mevcut_hk if h in HATA_KONUM],
+                                  key=f"edit_hata_{rid}")
 
-        eski_urls = (rec["fotograf_yolu"] or "").split(",")
-        eski_urls = [u.strip() for u in eski_urls if u.strip()]
-        if eski_urls:
-            st.caption("Kayıtlı fotoğraflar (ilk 3):")
-            st.image(eski_urls[:3], width=180)
+            # Mevcut fotoğraflar (ilk 3 önizleme)
+            eski_urls = (rec["fotograf_yolu"] or "").split(",")
+            eski_urls = [u.strip() for u in eski_urls if u.strip()]
+            if eski_urls:
+                st.caption("Kayıtlı fotoğraflar (ilk 3):")
+                st.image(eski_urls[:3], width=180)
 
-        yeni_fotolar = st.file_uploader(
-            "Yeni fotoğraf(lar) ekle (opsiyonel)",
-            type=["png","jpg","jpeg"], accept_multiple_files=True,
-            key=f"edit_upload_{rid}"
-        )
+            # Yeni foto ekle (opsiyonel)
+            yeni_fotolar = st.file_uploader(
+                "Yeni fotoğraf(lar) ekle (opsiyonel)",
+                type=["png","jpg","jpeg"], accept_multiple_files=True,
+                key=f"edit_upload_{rid}"
+            )
 
-        col_btn1, col_btn2 = st.columns([1,1])
-        if col_btn1.button("Güncelle", key=f"btn_guncelle_{rid}"):
-            add_urls = upload_files_to_storage(yeni_fotolar) if yeni_fotolar else []
-            merged_urls = ", ".join([u for u in (eski_urls + add_urls) if u])
-            ts = e_tarih.strftime("%d-%m-%Y") + " 00:00:00"
-            with engine.begin() as conn:
-                conn.execute(text("""
-                    UPDATE pdi_kayitlari SET
-                      bb_no=:bb, sasi_no=:sasi, arac_tipi=:arac, is_emri_no=:isn,
-                      alt_grup=:alt, tespitler=:t, hata_konumu=:hk, tarih_saat=:ts,
-                      fotograf_yolu=:fp
-                    WHERE id=:id
-                """), {
-                    "bb": (e_bb or "").strip(),
-                    "sasi": (e_sasi or "").strip(),
-                    "arac": e_arac,
-                    "isn": (e_isemri or "").strip(),
-                    "alt": e_alt, "t": (e_tespit or "").strip(),
-                    "hk": ", ".join(e_hk), "ts": ts, "fp": merged_urls, "id": int(rid)
-                })
-            st.success("Kayıt güncellendi.")
-            st.rerun()
+            col_btn1, col_btn2 = st.columns([1,1])
+            if col_btn1.button("Güncelle", key=f"btn_guncelle_{rid}"):
+                add_urls = upload_files_to_storage(yeni_fotolar) if yeni_fotolar else []
+                merged_urls = ", ".join([u for u in (eski_urls + add_urls) if u])
+                ts = e_tarih.strftime("%d-%m-%Y") + " 00:00:00"
+                with engine.begin() as conn:
+                    conn.execute(text("""
+                        UPDATE pdi_kayitlari SET
+                          bb_no=:bb, sasi_no=:sasi, arac_tipi=:arac, is_emri_no=:isn,
+                          alt_grup=:alt, tespitler=:t, hata_konumu=:hk, tarih_saat=:ts,
+                          fotograf_yolu=:fp
+                        WHERE id=:id
+                    """), {
+                        "bb": (e_bb or "").strip(),
+                        "sasi": (e_sasi or "").strip(),
+                        "arac": e_arac,
+                        "isn": (e_isemri or "").strip(),
+                        "alt": e_alt, "t": (e_tespit or "").strip(),
+                        "hk": ", ".join(e_hk), "ts": ts, "fp": merged_urls, "id": int(rid)
+                    })
+                st.success("Kayıt güncellendi.")
+                st.rerun()
 
-        if col_btn2.button("Sil", key=f"btn_sil_{rid}"):
-            with engine.begin() as conn:
-                conn.execute(text("DELETE FROM pdi_kayitlari WHERE id=:id"), {"id": int(rid)})
-            st.success("Kayıt silindi.")
-            st.rerun()
+            if col_btn2.button("Sil", key=f"btn_sil_{rid}"):
+                with engine.begin() as conn:
+                    conn.execute(text("DELETE FROM pdi_kayitlari WHERE id=:id"), {"id": int(rid)})
+                st.success("Kayıt silindi.")
+                st.rerun()
+# --------------------- Kullanıcı Yönetimi (yalnızca admin) --------------------
+st.subheader("Kullanıcı Yönetimi")
+if role != "admin":
+    st.info("Bu bölüm yalnızca admin için görünür.")
+else:
+    with st.expander("➕ Yeni Kullanıcı Ekle"):
+        nu = st.text_input("Kullanıcı adı", key="usr_add_u")
+        npw = st.text_input("Şifre", type="password", key="usr_add_p")
+        nrole = st.selectbox("Rol", ["Kullanıcı", "Yönetici"], index=0, key="usr_add_r")
+        nacik = st.text_input("Açıklama", key="usr_add_a")
+        if st.button("Ekle", key="usr_add_btn"):
+            if not nu or not npw:
+                st.warning("Kullanıcı adı ve şifre boş olamaz.")
+            else:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text("""
+                                INSERT INTO users (username,password,role,aciklama)
+                                VALUES (:u,:p,:r,:a)
+                            """),
+                            {"u": nu.strip(), "p": npw, "r": 1 if nrole=="Yönetici" else 0, "a": nacik.strip()}
+                        )
+                    st.success(f'"{nu}" kullanıcısı eklendi.')
+                    st.rerun()
+                except Exception as e:
+                    st.error("Kullanıcı eklenemedi. (Muhtemelen kullanıcı adı mevcut.)")
+
+    st.markdown("### Mevcut kullanıcılar")
+    with engine.begin() as conn:
+        df_users = pd.read_sql(text("SELECT username, role, aciklama FROM users ORDER BY username"), conn)
+
+    # Basit tablo + satır içi işlemler
+    for _, row in df_users.iterrows():
+        u = row["username"]
+        rol_txt = "Yönetici" if row["role"] == 1 else "Kullanıcı"
+        c1, c2, c3, c4, c5 = st.columns([2,1.2,3,1.4,1])
+        c1.write(f"**{u}**")
+        c2.write(rol_txt)
+        new_pw = c3.text_input("Yeni şifre", type="password", key=f"usr_reset_{u}", placeholder="(opsiyonel)")
+        if c4.button("Şifre Kaydet", key=f"usr_reset_btn_{u}"):
+            if not new_pw:
+                st.warning("Yeni şifre boş olamaz.")
+            else:
+                with engine.begin() as conn:
+                    conn.execute(text("UPDATE users SET password=:p WHERE username=:u"), {"p": new_pw, "u": u})
+                st.success(f'"{u}" şifresi güncellendi.')
+                st.rerun()
+        if c5.button("Sil", key=f"usr_del_{u}"):
+            if u == "admin":
+                st.warning("admin kullanıcısı silinemez.")
+            else:
+                with engine.begin() as conn:
+                    conn.execute(text("DELETE FROM users WHERE username=:u"), {"u": u})
+                st.success(f'"{u}" silindi.')
+                st.rerun()
+
