@@ -248,6 +248,78 @@ st.download_button(
 )
 
 st.markdown("---")
+# --------------------- 📷 Fotoğraf Galerisi ----------------------
+with st.expander("📷 Fotoğraf Galerisi", expanded=False):
+    # Filtreler
+    g1, g2, g3, g4, g5 = st.columns([1.2, 1.6, 1.2, 1.2, 1])
+    gal_sasi = g1.text_input("Şasi No (içeren)", key="gal_sasi")
+    gal_d1, gal_d2 = g2.date_input(
+        "Tarih Aralığı",
+        (date.today() - timedelta(days=30), date.today()),
+        key="gal_tarih",
+        format="DD.MM.YYYY"
+    )
+    gal_alt = g3.selectbox("Alt Grup", ["Tümü"] + ALT_GRUP, key="gal_alt")
+    gal_arac = g4.selectbox("Araç Tipi", ["Tümü"] + ARAC_TIPI, key="gal_arac")
+    thumb = g5.slider("Önizleme", min_value=100, max_value=400, value=180, key="gal_size")
+
+    # Sorgu (sadece fotoğrafı olan kayıtlar)
+    gal_where = [
+        "fotograf_yolu IS NOT NULL",
+        "length(trim(fotograf_yolu)) > 0",
+        "(substr(tarih_saat,7,4)||substr(tarih_saat,4,2)||substr(tarih_saat,1,2)) BETWEEN :d1 AND :d2"
+    ]
+    gal_params = {
+        "d1": gal_d1.strftime("%Y%m%d"),
+        "d2": gal_d2.strftime("%Y%m%d"),
+    }
+    if gal_sasi:
+        gal_where.append("sasi_no ILIKE :sasi")
+        gal_params["sasi"] = f"%{gal_sasi}%"
+    if gal_alt != "Tümü":
+        gal_where.append("alt_grup = :alt")
+        gal_params["alt"] = gal_alt
+    if gal_arac != "Tümü":
+        gal_where.append("arac_tipi = :arac")
+        gal_params["arac"] = gal_arac
+
+    GAL_SQL = f"""
+    SELECT id,
+           sasi_no AS "Şasi No",
+           arac_tipi AS "Araç Tipi",
+           alt_grup  AS "Alt Grup",
+           hata_konumu AS "Hata Konumu",
+           tarih_saat AS "PDI Yapılış Tarihi",
+           fotograf_yolu
+    FROM pdi_kayitlari
+    WHERE {' AND '.join(gal_where)}
+    ORDER BY id DESC;
+    """
+    with engine.begin() as conn:
+        gal_df = pd.read_sql(text(GAL_SQL), conn, params=gal_params)
+
+    st.caption(f"Toplam fotoğraflı kayıt: **{len(gal_df)}**")
+
+    if gal_df.empty:
+        st.info("Seçili filtrelerle fotoğraf bulunamadı.")
+    else:
+        # Kart kart göster
+        for _, r in gal_df.iterrows():
+            urls = [u.strip() for u in (r["fotograf_yolu"] or "").split(",") if u.strip()]
+            if not urls:
+                continue
+
+            st.markdown(
+                f'**ID #{int(r["id"])}** • **{r["Şasi No"]}** • {r["PDI Yapılış Tarihi"]} • '
+                f'{r["Araç Tipi"]} • {r["Alt Grup"]} • {r["Hata Konumu"] or ""}'
+            )
+            # Bir satırda birden çok görsel
+            st.image(urls, width=thumb, clamp=True)
+            # Linkleri de verelim (ilk 10)
+            links = " | ".join(f"[{i+1}]({u})" for i, u in enumerate(urls[:10]))
+            if links:
+                st.caption("Bağlantılar: " + links)
+            st.divider()
 
 # --------------------- Yeni Kayıt Ekle --------------------------
 nonce = st.session_state["form_nonce"]
