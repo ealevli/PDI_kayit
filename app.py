@@ -1,4 +1,6 @@
-# pip: streamlit sqlalchemy psycopg2-binary pandas openpyxl
+# PDI Kayıt Sistemi – Streamlit
+# Gereken paketler: streamlit, sqlalchemy, psycopg2-binary, pandas, openpyxl
+
 import os
 from io import BytesIO
 from datetime import date, timedelta
@@ -6,63 +8,8 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine, text
-from urllib.parse import quote_plus
-from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
-
-# --- DB bağlantısı (Supabase uyumlu, IPv4 opsiyonlu) ---
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
-
-def build_db_url_and_args():
-    # 1) Parçalı secrets ([db]) -> önerilen
-    if "db" in st.secrets:
-        s = st.secrets["db"]
-        user = s.get("user", "postgres")
-        pwd  = quote_plus(s.get("password", ""))
-        host = s["host"]                       # örn: db.xxxxx.supabase.co
-        port = s.get("port", "6543")           # önce pooler (6543)
-        name = s.get("name", "postgres")
-        ssl  = s.get("sslmode", "require")
-        hostaddr = s.get("hostaddr")           # IPv4 zorlamak istersen ekle
-        url = f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{name}?sslmode={ssl}"
-        connect_args = {"options": "-c statement_timeout=30000"}
-        if hostaddr:
-            connect_args["hostaddr"] = hostaddr
-        return url, connect_args
-
-    # 2) Tek satır DSN (db_url) -> alternatif
-    url = st.secrets.get("db_url", os.getenv("DB_URL", ""))
-    return url, {"options": "-c statement_timeout=30000"}
-
-DB_URL, CONNECT_ARGS = build_db_url_and_args()
-if not DB_URL:
-    st.error("Veritabanı bağlantısı bulunamadı. Secrets’te db_url veya [db] girin.")
-    st.stop()
-
-# Bağlantıyı dene; 6543 olmazsa 5432'ye düş
-def try_connect(url, connect_args):
-    eng = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
-    with eng.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    return eng
-
-try:
-    engine = try_connect(DB_URL, CONNECT_ARGS)
-except OperationalError as e:
-    # Pooler (6543) yerine 5432'yi otomatik dene
-    if ":6543/" in DB_URL:
-        alt = DB_URL.replace(":6543/", ":5432/")
-        try:
-            engine = try_connect(alt, CONNECT_ARGS)
-        except OperationalError:
-            st.error("Veritabanına bağlanılamadı. host/port/ssl bilgilerini kontrol edin.")
-            st.stop()
-    else:
-        st.error("Veritabanına bağlanılamadı. host/port/ssl bilgilerini kontrol edin.")
-        st.stop()
-
 
 # ------------------------------------------------------
 # Sabitler
@@ -79,44 +26,81 @@ ARAC_TIPI = ["Tourismo", "Connecto", "Travego"]
 st.set_page_config(page_title="PDI Kayıt Sistemi", layout="wide")
 
 # ------------------------------------------------------
-# Veritabanı (Postgres) bağlantısı
-# Streamlit Cloud'da .streamlit/secrets.toml içine:
-# db_url = "postgresql+psycopg2://USER:PASS@HOST:5432/DBNAME"
+# Secrets'ten DB URL oluşturma (db_url veya [db] bloğu)
 # ------------------------------------------------------
-DB_URL = st.secrets.get("db_url", os.getenv("DB_URL", ""))
+def build_db_url_and_args():
+    # Parçalı secrets (önerilen)
+    if "db" in st.secrets:
+        s = st.secrets["db"]
+        user = s.get("user", "postgres")
+        pwd  = quote_plus(s.get("password", ""))
+        host = s["host"]
+        port = s.get("port", "6543")        # Supabase pooler
+        name = s.get("name", "postgres")
+        ssl  = s.get("sslmode", "require")
+        url = f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{name}?sslmode={ssl}"
+        return url, {}
+    # Tek satır DSN (db_url) ya da ortam değişkeni
+    url = st.secrets.get("db_url", os.getenv("DB_URL", ""))
+    return url, {}
+
+DB_URL, CONNECT_ARGS = build_db_url_and_args()
 if not DB_URL:
-    st.error("Veritabanı bağlantısı bulunamadı. secrets.toml içindeki db_url yok.")
+    st.error("Veritabanı bağlantısı bulunamadı. secrets.toml içinde db_url ya da [db] girin.")
     st.stop()
 
-engine = create_engine(DB_URL, pool_pre_ping=True)
+# ------------------------------------------------------
+# Güvenli bağlantı kur (önce 6543, olmazsa 5432)
+# ------------------------------------------------------
+def try_connect(url, connect_args):
+    eng = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+    with eng.connect() as c:
+        c.execute(text("SELECT 1"))
+    return eng
+
+try:
+    engine = try_connect(DB_URL, CONNECT_ARGS)
+except OperationalError:
+    if ":6543/" in DB_URL:
+        alt = DB_URL.replace(":6543/", ":5432/")
+        try:
+            engine = try_connect(alt, CONNECT_ARGS)
+        except OperationalError:
+            st.error("Veritabanına bağlanılamadı. Host/port/SSL ve kullanıcı bilgilerini kontrol edin "
+                     "(Supabase için pooler: port 6543, user: postgres.<project-ref>, sslmode=require).")
+            st.stop()
+    else:
+        st.error("Veritabanına bağlanılamadı. Host/port/SSL ve kullanıcı bilgilerini kontrol edin.")
+        st.stop()
 
 # ------------------------------------------------------
-# DB şemasını hazırla (ilk çalıştırmada tablo yoksa yaratır)
+# İlk kurulum (tablolar & admin kullanıcı)
 # ------------------------------------------------------
 def init_db():
     with engine.begin() as conn:
         conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS users(
-            username TEXT PRIMARY KEY,
-            password TEXT,
-            role INT,
-            aciklama TEXT
-        );"""))
+            CREATE TABLE IF NOT EXISTS users(
+                username TEXT PRIMARY KEY,
+                password TEXT,
+                role INT,
+                aciklama TEXT
+            );
+        """))
         conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS pdi_kayitlari(
-            id SERIAL PRIMARY KEY,
-            bb_no TEXT,
-            sasi_no TEXT,
-            arac_tipi TEXT,
-            is_emri_no TEXT,
-            alt_grup TEXT,
-            tespitler TEXT,
-            hata_konumu TEXT,
-            fotograf_yolu TEXT,
-            tarih_saat TEXT,
-            kullanici TEXT
-        );"""))
-        # admin yoksa ekle
+            CREATE TABLE IF NOT EXISTS pdi_kayitlari(
+                id SERIAL PRIMARY KEY,
+                bb_no TEXT,
+                sasi_no TEXT,
+                arac_tipi TEXT,
+                is_emri_no TEXT,
+                alt_grup TEXT,
+                tespitler TEXT,
+                hata_konumu TEXT,
+                fotograf_yolu TEXT,
+                tarih_saat TEXT,
+                kullanici TEXT
+            );
+        """))
         conn.execute(text("""
             INSERT INTO users(username,password,role,aciklama)
             VALUES ('admin','admin123',1,'Sistem Yöneticisi')
@@ -126,12 +110,12 @@ def init_db():
 init_db()
 
 # ------------------------------------------------------
-# Giriş / Kimlik Doğrulama
+# Giriş
 # ------------------------------------------------------
 def login_form():
     st.title("PDI Kayıt Sistemi – Giriş")
-    u = st.text_input("Kullanıcı adı")
-    p = st.text_input("Şifre", type="password")
+    u = st.text_input("Kullanıcı adı", key="login_u")
+    p = st.text_input("Şifre", type="password", key="login_p")
     if st.button("Giriş"):
         with engine.begin() as conn:
             row = conn.execute(
@@ -141,7 +125,7 @@ def login_form():
         if row:
             st.session_state["user"] = u
             st.session_state["role"] = "admin" if row[0] == 1 else "viewer"
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Kullanıcı adı veya şifre hatalı.")
 
@@ -155,9 +139,9 @@ role = st.session_state.get("role", "viewer")
 with st.sidebar:
     st.markdown(f"**Giriş yapan:** {user} ({role})")
     if st.button("Çıkış"):
-        for k in ["user", "role"]:
+        for k in ("user", "role"):
             st.session_state.pop(k, None)
-        st.experimental_rerun()
+        st.rerun()
 
 st.title("PDI Kayıtları")
 
@@ -176,8 +160,7 @@ f_kul  = c5.text_input("Kullanıcı (boş=hepsi)")
 f_arac = c6.selectbox("Araç Tipi", ["Tümü"] + ARAC_TIPI)
 
 # ------------------------------------------------------
-# Veri çekme
-# tarih_saat 'dd-MM-YYYY HH:MM:SS' metin – filtre için YYYYMMDD üretip BETWEEN
+# Veriyi çek
 # ------------------------------------------------------
 where = ["1=1"]
 params = {
@@ -200,6 +183,7 @@ if f_arac != "Tümü":
     where.append("arac_tipi = :arac")
     params["arac"] = f_arac
 
+# tarih_saat 'dd-MM-YYYY HH:MM:SS' -> YYYYMMDD
 where.append("(substr(tarih_saat,7,4)||substr(tarih_saat,4,2)||substr(tarih_saat,1,2)) BETWEEN :d1 AND :d2")
 
 SQL_LIST = f"""
@@ -223,12 +207,12 @@ with engine.begin() as conn:
     df = pd.read_sql(text(SQL_LIST), conn, params=params)
 
 # ------------------------------------------------------
-# Tablo (fotoğraf sütununu göstermiyoruz, ayrı işleyeceğiz)
+# Tablo
 # ------------------------------------------------------
 st.dataframe(df.drop(columns=["fotograf_yolu"]), use_container_width=True, height=420)
 
 # ------------------------------------------------------
-# Excel indirme
+# Excel indir
 # ------------------------------------------------------
 def df_to_xlsx_bytes(frame: pd.DataFrame) -> bytes:
     from openpyxl.workbook import Workbook
@@ -257,7 +241,7 @@ st.download_button(
 st.markdown("---")
 
 # ------------------------------------------------------
-# Yeni Kayıt Ekle (isteğe bağlı; tüm giriş yapanlar ekleyebilir)
+# Yeni Kayıt Ekle (isteğe bağlı: herkes ekleyebilir; istersen role=='admin' yap)
 # ------------------------------------------------------
 with st.expander("➕ Yeni Kayıt Ekle"):
     col1, col2, col3 = st.columns(3)
@@ -297,7 +281,7 @@ with st.expander("➕ Yeni Kayıt Ekle"):
                     "kul": user
                 })
             st.success("Kayıt eklendi.")
-            st.experimental_rerun()
+            st.rerun()
 
 # ------------------------------------------------------
 # Düzenleme (yalnızca admin)
@@ -315,24 +299,25 @@ else:
         c1, c2, c3 = st.columns(3)
         e_bb   = c1.text_input("BB No", rec["BB No"] or "")
         e_sasi = c2.text_input("Şasi No", rec["Şasi No"] or "")
-        e_arac = c3.selectbox("Araç Tipi", ARAC_TIPI,
-                              index=max(0, ARAC_TIPI.index(rec["Araç Tipi"]) if rec["Araç Tipi"] in ARAC_TIPI else 0))
+        # Araç tipi
+        idx_arac = ARAC_TIPI.index(rec["Araç Tipi"]) if rec["Araç Tipi"] in ARAC_TIPI else 0
+        e_arac = c3.selectbox("Araç Tipi", ARAC_TIPI, index=idx_arac)
 
         c4, c5, c6 = st.columns(3)
         e_isemri = c4.text_input("İş Emri No", rec["İş Emri No"] or "")
-
-        # Erken/önceki veri "dd-MM-YYYY HH:MM:SS"
+        # Tarih (dd-MM-YYYY HH:MM:SS -> date)
         ds = (rec["PDI Yapılış Tarihi"] or "01-01-2000").split(" ")[0]
         d_default = pd.to_datetime(ds, format="%d-%m-%Y", errors="coerce").date() if ds else date.today()
         e_tarih = c5.date_input("PDI Yapılış Tarihi", value=d_default)
-        e_alt = c6.selectbox("Alt Grup", ALT_GRUP,
-                             index=max(0, ALT_GRUP.index(rec["Alt Grup"]) if rec["Alt Grup"] in ALT_GRUP else 0))
+        idx_alt = ALT_GRUP.index(rec["Alt Grup"]) if rec["Alt Grup"] in ALT_GRUP else 0
+        e_alt = c6.selectbox("Alt Grup", ALT_GRUP, index=idx_alt)
 
         e_tespit = st.text_area("Tespitler", rec["Tespitler"] or "", height=120)
         mevcut_hk = [h.strip() for h in (rec["Hata Konumu"] or "").split(",") if h.strip()]
         e_hk = st.multiselect("Hata Konumu", HATA_KONUM, default=[h for h in mevcut_hk if h in HATA_KONUM])
 
-        if st.button("Güncelle"):
+        col_btn1, col_btn2 = st.columns([1,1])
+        if col_btn1.button("Güncelle"):
             ts = e_tarih.strftime("%d-%m-%Y") + " 00:00:00"
             with engine.begin() as conn:
                 conn.execute(text("""
@@ -346,4 +331,10 @@ else:
                     "hk": ", ".join(e_hk), "ts": ts, "id": int(rid)
                 })
             st.success("Kayıt güncellendi.")
-            st.experimental_rerun()
+            st.rerun()
+
+        if col_btn2.button("Sil"):
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM pdi_kayitlari WHERE id=:id"), {"id": int(rid)})
+            st.success("Kayıt silindi.")
+            st.rerun()
