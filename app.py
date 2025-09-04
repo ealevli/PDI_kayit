@@ -70,7 +70,7 @@ except OperationalError:
         st.stop()
 
 # --------------------- Supabase Storage -------------------------
-def get_supabase() -> tuple[Client, str] | tuple[None, None]:
+def get_supabase():
     sb = st.secrets.get("supabase")
     if not sb:
         return None, None
@@ -83,28 +83,49 @@ def get_supabase() -> tuple[Client, str] | tuple[None, None]:
     return client, bucket
 
 def ensure_bucket_public(client: Client, bucket: str):
+    """Bucket yoksa public olarak oluştur (SDK sürümleriyle uyumlu)."""
     try:
         client.storage.get_bucket(bucket)
+        return
     except Exception:
-        client.storage.create_bucket(bucket, public=True)
+        pass
+    try:
+        client.storage.create_bucket(bucket, {"public": True})
+    except TypeError:
+        try:
+            client.storage.create_bucket(bucket, options={"public": True})
+        except Exception:
+            client.storage.create_bucket(bucket)  # son çare (policy'i sonradan panelden public yapabilirsiniz)
 
 def upload_files_to_storage(files) -> list[str]:
+    """Streamlit UploadedFile listesini Supabase Storage'a yükler, public URL döner."""
     client, bucket = get_supabase()
     if client is None:
         st.error("Fotoğraf yüklemek için Secrets’e [supabase] {url, service_role, bucket} ekleyin.")
         return []
+
     ensure_bucket_public(client, bucket)
+
     urls: list[str] = []
     for f in files:
         ext = os.path.splitext(f.name)[1].lower() or ".jpg"
         key = f"pdi/{date.today().isoformat()}/{uuid.uuid4().hex}{ext}"
         data = f.read()
         ctype = f.type or mimetypes.guess_type(f.name)[0] or "application/octet-stream"
-        client.storage.from_(bucket).upload(
-            file=data, path=key, file_options={"contentType": ctype, "upsert": True}
-        )
+
+        # upload imzası sürüme göre değişebiliyor: önce yeni imza, olmazsa eski
+        try:
+            client.storage.from_(bucket).upload(
+                file=data,
+                path=key,
+                file_options={"contentType": ctype, "upsert": True},
+            )
+        except TypeError:
+            client.storage.from_(bucket).upload(path=key, file=data)
+
         public_url = client.storage.from_(bucket).get_public_url(key)
         urls.append(public_url)
+
     return urls
 
 # --------------------- İlk kurulum ------------------------------
@@ -247,10 +268,8 @@ st.download_button(
     key="btn_excel"
 )
 
-st.markdown("---")
 # --------------------- 📷 Fotoğraf Galerisi ----------------------
 with st.expander("📷 Fotoğraf Galerisi", expanded=False):
-    # Filtreler
     g1, g2, g3, g4, g5 = st.columns([1.2, 1.6, 1.2, 1.2, 1])
     gal_sasi = g1.text_input("Şasi No (içeren)", key="gal_sasi")
     gal_d1, gal_d2 = g2.date_input(
@@ -263,25 +282,18 @@ with st.expander("📷 Fotoğraf Galerisi", expanded=False):
     gal_arac = g4.selectbox("Araç Tipi", ["Tümü"] + ARAC_TIPI, key="gal_arac")
     thumb = g5.slider("Önizleme", min_value=100, max_value=400, value=180, key="gal_size")
 
-    # Sorgu (sadece fotoğrafı olan kayıtlar)
     gal_where = [
         "fotograf_yolu IS NOT NULL",
         "length(trim(fotograf_yolu)) > 0",
         "(substr(tarih_saat,7,4)||substr(tarih_saat,4,2)||substr(tarih_saat,1,2)) BETWEEN :d1 AND :d2"
     ]
-    gal_params = {
-        "d1": gal_d1.strftime("%Y%m%d"),
-        "d2": gal_d2.strftime("%Y%m%d"),
-    }
+    gal_params = {"d1": gal_d1.strftime("%Y%m%d"), "d2": gal_d2.strftime("%Y%m%d")}
     if gal_sasi:
-        gal_where.append("sasi_no ILIKE :sasi")
-        gal_params["sasi"] = f"%{gal_sasi}%"
+        gal_where.append("sasi_no ILIKE :sasi"); gal_params["sasi"] = f"%{gal_sasi}%"
     if gal_alt != "Tümü":
-        gal_where.append("alt_grup = :alt")
-        gal_params["alt"] = gal_alt
+        gal_where.append("alt_grup = :alt"); gal_params["alt"] = gal_alt
     if gal_arac != "Tümü":
-        gal_where.append("arac_tipi = :arac")
-        gal_params["arac"] = gal_arac
+        gal_where.append("arac_tipi = :arac"); gal_params["arac"] = gal_arac
 
     GAL_SQL = f"""
     SELECT id,
@@ -303,27 +315,25 @@ with st.expander("📷 Fotoğraf Galerisi", expanded=False):
     if gal_df.empty:
         st.info("Seçili filtrelerle fotoğraf bulunamadı.")
     else:
-        # Kart kart göster
         for _, r in gal_df.iterrows():
             urls = [u.strip() for u in (r["fotograf_yolu"] or "").split(",") if u.strip()]
             if not urls:
                 continue
-
             st.markdown(
                 f'**ID #{int(r["id"])}** • **{r["Şasi No"]}** • {r["PDI Yapılış Tarihi"]} • '
                 f'{r["Araç Tipi"]} • {r["Alt Grup"]} • {r["Hata Konumu"] or ""}'
             )
-            # Bir satırda birden çok görsel
             st.image(urls, width=thumb, clamp=True)
-            # Linkleri de verelim (ilk 10)
             links = " | ".join(f"[{i+1}]({u})" for i, u in enumerate(urls[:10]))
             if links:
                 st.caption("Bağlantılar: " + links)
             st.divider()
 
+st.markdown("---")
+
 # --------------------- Yeni Kayıt Ekle --------------------------
 nonce = st.session_state["form_nonce"]
-with st.expander("➕ Yeni Kayıt Ekle"):
+with st.expander("➕ Yeni Kayıt Ekle", expanded=False):
     col1, col2, col3 = st.columns(3)
     bb_no   = col1.text_input("BB No", key=f"new_bb_{nonce}")
     sasi_no = col2.text_input("Şasi No", key=f"new_sasi_{nonce}")
@@ -369,16 +379,14 @@ with st.expander("➕ Yeni Kayıt Ekle"):
                     "kul": user
                 })
             st.success("Kayıt eklendi.")
-            # formu tamamen sıfırla (file_uploader dahil)
-            st.session_state["form_nonce"] += 1
+            st.session_state["form_nonce"] += 1  # formu tamamen sıfırla
             st.rerun()
 
-# --------------------- Düzenleme (admin) ------------------------
 # --------------------- Düzenleme (admin) ------------------------
 if role != "admin":
     st.info("Kayıt düzenleme yalnızca admin için açıktır.")
 else:
-    with st.expander("✏️ Kayıt Düzenle", expanded=False):  # <— gizlenebilir
+    with st.expander("✏️ Kayıt Düzenle", expanded=False):
         if df.empty:
             st.warning("Düzenlenecek kayıt yok.")
         else:
@@ -406,14 +414,12 @@ else:
                                   default=[h for h in mevcut_hk if h in HATA_KONUM],
                                   key=f"edit_hata_{rid}")
 
-            # Mevcut fotoğraflar (ilk 3 önizleme)
             eski_urls = (rec["fotograf_yolu"] or "").split(",")
             eski_urls = [u.strip() for u in eski_urls if u.strip()]
             if eski_urls:
                 st.caption("Kayıtlı fotoğraflar (ilk 3):")
                 st.image(eski_urls[:3], width=180)
 
-            # Yeni foto ekle (opsiyonel)
             yeni_fotolar = st.file_uploader(
                 "Yeni fotoğraf(lar) ekle (opsiyonel)",
                 type=["png","jpg","jpeg"], accept_multiple_files=True,
@@ -448,12 +454,13 @@ else:
                     conn.execute(text("DELETE FROM pdi_kayitlari WHERE id=:id"), {"id": int(rid)})
                 st.success("Kayıt silindi.")
                 st.rerun()
-# --------------------- Kullanıcı Yönetimi (yalnızca admin) --------------------
+
+# --------------------- Kullanıcı Yönetimi (yalnız admin) --------
 st.subheader("Kullanıcı Yönetimi")
 if role != "admin":
     st.info("Bu bölüm yalnızca admin için görünür.")
 else:
-    with st.expander("➕ Yeni Kullanıcı Ekle"):
+    with st.expander("➕ Yeni Kullanıcı Ekle", expanded=False):
         nu = st.text_input("Kullanıcı adı", key="usr_add_u")
         npw = st.text_input("Şifre", type="password", key="usr_add_p")
         nrole = st.selectbox("Rol", ["Kullanıcı", "Yönetici"], index=0, key="usr_add_r")
@@ -473,14 +480,13 @@ else:
                         )
                     st.success(f'"{nu}" kullanıcısı eklendi.')
                     st.rerun()
-                except Exception as e:
+                except Exception:
                     st.error("Kullanıcı eklenemedi. (Muhtemelen kullanıcı adı mevcut.)")
 
     st.markdown("### Mevcut kullanıcılar")
     with engine.begin() as conn:
         df_users = pd.read_sql(text("SELECT username, role, aciklama FROM users ORDER BY username"), conn)
 
-    # Basit tablo + satır içi işlemler
     for _, row in df_users.iterrows():
         u = row["username"]
         rol_txt = "Yönetici" if row["role"] == 1 else "Kullanıcı"
@@ -504,4 +510,3 @@ else:
                     conn.execute(text("DELETE FROM users WHERE username=:u"), {"u": u})
                 st.success(f'"{u}" silindi.')
                 st.rerun()
-
