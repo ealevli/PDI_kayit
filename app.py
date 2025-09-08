@@ -14,7 +14,7 @@ from urllib.parse import quote_plus
 from supabase import create_client, Client
 
 # --------------------------- Sabitler ---------------------------
-ALT_GRUP = ["Boya", "Süsleme", "Mekanik", "Elektrik"]
+ALT_GRUP = ["Boya", "Süsleme", "Mekanik", "Elektrik,Hepsi"]
 HATA_KONUM = [
     "Aydınlatma","Ayırma Duvarı","Ayna","Boya","CAM","Çıta","Defroster","Etiket",
     "Kapak","Kapı","Kaplama","Kelepçe","Klima","Koltuk","Körük","Lamba","Montaj",
