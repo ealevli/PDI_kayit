@@ -1,0 +1,142 @@
+<Window x:Class="PDI_WPF.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:PDI_WPF.ViewModels"
+    xmlns:views="clr-namespace:PDI_WPF.Views"
+    Title="Mercedes-Benz Türk | Otobüs Teknik PDI" Height="800" Width="1400"
+    WindowStartupLocation="CenterScreen" WindowState="Maximized">
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Tüm Sayfalar İçin DataTemplates -->
+        <DataTemplate DataType="{x:Type vm:LoginViewModel}">
+            <views:LoginView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <views:DashboardView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ReportViewModel}">
+            <views:ReportView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RecordListViewModel}">
+            <views:RecordListView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TopErrorAnalysisViewModel}">
+            <views:TopErrorAnalysisView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:NewRecordViewModel}">
+            <views:NewRecordView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ManufacturingViewModel}">
+            <views:ManufacturingView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ErrorDetailViewModel}">
+            <views:ErrorDetailView />
+        </DataTemplate>
+
+        <!-- Yönetim Sayfaları -->
+        <DataTemplate DataType="{x:Type vm:UserManagementViewModel}">
+            <views:UserManagementView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TopErrorManagementViewModel}">
+            <views:TopErrorManagementView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DataUploadViewModel}">
+            <views:DataUploadView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ManufacturingAnalysisViewModel}">
+            <views:ManufacturingAnalysisView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource ColorBackground}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Background="{StaticResource ColorSidebar}" Width="250"
+            Visibility="{Binding IsSidebarVisible, Converter={StaticResource BoolToVis}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,20">
+                    <TextBlock Text="Mercedes-Benz" Foreground="White" FontFamily="Times New Roman"
+                        FontSize="18" FontWeight="Bold" Margin="20,0" />
+                    <TextBlock Text="BUS PDI SYSTEM" Foreground="#666" FontSize="10"
+                        Margin="20,0,0,20" />
+
+                    <Border Background="#1a1a1a" CornerRadius="5" Margin="10,10" Padding="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="40" Height="40" Background="White" CornerRadius="20">
+                                <TextBlock Text="A" Foreground="Black" FontWeight="Bold"
+                                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                                    FontSize="16" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock
+                                    Text="{Binding CurrentUser.Username, FallbackValue='Admin'}"
+                                    Foreground="White" FontWeight="Bold" />
+                                <TextBlock Text="YÖNETİCİ" Foreground="#28a745" FontSize="11"
+                                    FontWeight="Bold" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Button Content="⊞  ÖZET PANEL" Command="{Binding NavigateDashboardCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+
+                    <TextBlock Text="RAPORLAR" Foreground="#666" FontSize="11" FontWeight="Bold"
+                        Margin="20,20,0,5" />
+                    <Button Content="📓  TRV &amp; TOU RAPOR"
+                        Command="{Binding NavigateReportTrvCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="📓  CONNECTO RAPOR"
+                        Command="{Binding NavigateReportConCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="🗺  TOP 5 ANALİZ" Command="{Binding NavigateTopAnalizCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+
+                    <TextBlock Text="KAYIT İŞLEMLERİ" Foreground="#666" FontSize="11"
+                        FontWeight="Bold" Margin="20,20,0,5" />
+                    <Button Content="☰  KAYIT LİSTESİ" Command="{Binding NavigateRecordListCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="⊕  YENİ KAYIT" Command="{Binding NavigateNewRecordCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+
+                    <TextBlock Text="İMALAT TAKİP" Foreground="#666" FontSize="11" FontWeight="Bold"
+                        Margin="20,20,0,5" />
+                    <Button Content="⚒  İMALATA GÖNDER"
+                        Command="{Binding NavigateManufacturingCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="📈  İMALAT RAPORLARI"
+                        Command="{Binding NavigateManufacturingAnalysisCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+
+                    <TextBlock Text="YÖNETİM" Foreground="#666" FontSize="11" FontWeight="Bold"
+                        Margin="20,20,0,5" />
+                    <Button Content="👤  KULLANICILAR"
+                        Command="{Binding NavigateUserManagementCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="🏷  TOP HATA YÖNETİMİ"
+                        Command="{Binding NavigateTopErrorManagementCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+                    <Button Content="💾  GEÇMİŞ VERİ YÜKLE"
+                        Command="{Binding NavigateDataUploadCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" />
+
+                    <Button Content="↪ OTURUMU KAPAT" Command="{Binding LogoutCommand}"
+                        Style="{StaticResource SidebarButtonStyle}" Margin="0,40,0,20" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" />
+    </Grid>
+</Window>

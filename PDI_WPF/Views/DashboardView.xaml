@@ -1,0 +1,38 @@
+<UserControl x:Class="PDI_WPF.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="{StaticResource ColorBackground}" Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="GENEL ÖZET" FontSize="24" FontWeight="Bold" Foreground="#333" Margin="10"/>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource CardStyle}" Margin="10">
+                <StackPanel><TextBlock Text="TOPLAM ARAÇ" FontWeight="Bold" Foreground="#888"/>
+                <TextBlock Text="{Binding TotalVehicles}" FontSize="32" FontWeight="Bold"/></StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="10">
+                <StackPanel><TextBlock Text="TOPLAM HATA" FontWeight="Bold" Foreground="#888"/>
+                <TextBlock Text="{Binding TotalErrors}" FontSize="32" FontWeight="Bold" Foreground="#dc3545"/></StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource CardStyle}" Margin="10">
+                <StackPanel><TextBlock Text="TOURISMO" FontWeight="Bold" Foreground="#888"/>
+                <TextBlock Text="{Binding TourismoCount}" FontSize="32" FontWeight="Bold"/></StackPanel>
+            </Border>
+            <Border Grid.Column="3" Style="{StaticResource CardStyle}" Margin="10">
+                <StackPanel><TextBlock Text="TRAVEGO" FontWeight="Bold" Foreground="#888"/>
+                <TextBlock Text="{Binding TravegoCount}" FontSize="32" FontWeight="Bold"/></StackPanel>
+            </Border>
+            <Border Grid.Column="4" Style="{StaticResource CardStyle}" Margin="10">
+                <StackPanel><TextBlock Text="CONNECTO" FontWeight="Bold" Foreground="#888"/>
+                <TextBlock Text="{Binding ConnectoCount}" FontSize="32" FontWeight="Bold"/></StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

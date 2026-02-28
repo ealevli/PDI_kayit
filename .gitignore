@@ -1,0 +1,10 @@
+__pycache__/
+*.db
+*.sqlite3
+.vscode/
+
+# WPF / C# ignores
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
