@@ -1,6 +1,7 @@
 __pycache__/
 *.db
 *.sqlite3
+!PDI_Web/database/pdi_veritabani.db
 .vscode/
 
 # WPF / C# ignores
