@@ -12,6 +12,9 @@ import App_Mechanic from './App_Mechanic';
 import Imalat from './pages/Imalat';
 import ImalatReports from './pages/ImalatReports';
 import ExcelImport from './pages/ExcelImport';
+import PDIFormPage from './pages/PDIFormPage';
+import DynamikFormYonetim from './pages/DynamikFormYonetim';
+import PDISessionList from './pages/PDISessionList';
 
 const DummyPage = ({ title }: { title: string }) => (
     <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '12px' }}>
@@ -30,8 +33,8 @@ function App() {
                 {/* Mechanic / Operator Route */}
                 <Route path="/mechanic" element={<App_Mechanic />} />
 
-                {/* Usta Route - same as mechanic for now, will have checklist added later */}
-                <Route path="/usta" element={<App_Mechanic />} />
+                {/* Usta Route - PDI dijital form */}
+                <Route path="/usta" element={<PDIFormPage />} />
 
                 {/* Admin Routes with Sidebar Layout */}
                 <Route path="/admin" element={<AdminLayout />}>
@@ -44,6 +47,8 @@ function App() {
                     <Route path="records" element={<RecordList />} />
                     <Route path="imalat" element={<Imalat />} />
                     <Route path="imalat-rapor" element={<ImalatReports />} />
+                    <Route path="pdi-sessions" element={<PDISessionList />} />
+                    <Route path="dinamik-form" element={<DynamikFormYonetim />} />
                     <Route path="kullanicilar" element={<DummyPage title="Kullanıcı Yönetimi" />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="gecmis-veri" element={<ExcelImport />} />

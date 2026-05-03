@@ -1,0 +1,24 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Database (canlı veri — repo'ya girmesin)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Uploaded photos
+backend/static/photos/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# OS
+.DS_Store
+Thumbs.db

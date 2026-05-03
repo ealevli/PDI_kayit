@@ -3,7 +3,7 @@ import { useNavigate, NavLink, Outlet } from 'react-router-dom';
 import {
     LayoutDashboard, BarChart3, PieChart, BarChart2, Award,
     Settings as SettingsIcon, LogOut, Menu, X, BusFront, PlusCircle, Users, TableProperties,
-    ClipboardList
+    ClipboardList, ListChecks, SlidersHorizontal
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -38,6 +38,14 @@ const AdminLayout: React.FC = () => {
             items: [
                 { name: 'İMALAT LİSTESİ', path: '/admin/imalat?tab=list', icon: <ClipboardList size={18} /> },
                 { name: 'İMALAT RAPORLARI', path: '/admin/imalat-rapor', icon: <BarChart3 size={18} /> },
+            ]
+        },
+        {
+            title: 'PDI FORM',
+            items: [
+                { name: 'FORM OTURUMLARI', path: '/admin/pdi-sessions', icon: <ListChecks size={18} /> },
+                { name: 'DİNAMİK FORM', path: '/admin/dinamik-form', icon: <SlidersHorizontal size={18} /> },
+                { name: 'USTA FORMU AÇ', path: '/usta', icon: <PlusCircle size={18} /> },
             ]
         },
         {

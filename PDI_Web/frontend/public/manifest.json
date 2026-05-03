@@ -1,0 +1,24 @@
+{
+  "name": "PDI Digital - Mercedes-Benz Türk",
+  "short_name": "PDI Digital",
+  "description": "Mercedes-Benz Türk PDI Kontrol Formu",
+  "start_url": "/usta",
+  "display": "standalone",
+  "background_color": "#f2f2f2",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/mercedes-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/mercedes-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LabelList
 } from 'recharts';
-import { Edit2, X } from 'lucide-react';
+import { Edit2, X, Trash2 } from 'lucide-react';
 
 const API_BASE_URL = `http://${window.location.hostname}:8000/api`;
 const ADMIN_API = `http://${window.location.hostname}:8000/api/admin`;
@@ -115,6 +115,12 @@ const ImalatReports: React.FC = () => {
         if (!newCozulen.trim()) return;
         await axios.post(`${ADMIN_API}/manuel-cozulenler`, { hata: newCozulen, donem: `${month}-${year}` });
         setNewCozulen('');
+        fetchCozulenler();
+    };
+
+    const handleDeleteCozulen = async (id: number) => {
+        if (!window.confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
+        await axios.delete(`${ADMIN_API}/manuel-cozulenler/${id}`);
         fetchCozulenler();
     };
 
@@ -302,6 +308,13 @@ const ImalatReports: React.FC = () => {
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span style={{ padding: '4px 14px', backgroundColor: '#16a34a', color: '#fff', borderRadius: '4px', fontWeight: 700, fontSize: '0.8rem' }}>✓ Solved</span>
+                                        <button
+                                            onClick={() => handleDeleteCozulen(item.id)}
+                                            title="Sil"
+                                            style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '4px', padding: '3px 6px', cursor: 'pointer', color: '#e80000', display: 'flex', alignItems: 'center' }}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}

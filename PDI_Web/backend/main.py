@@ -2,11 +2,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base, DB_DIR
-from routers import mechanic, admin, reports, imalat
+from routers import mechanic, admin, reports, imalat, form
 import os
 
 # Create tables if not exists
 Base.metadata.create_all(bind=engine)
+
+# SQLite migration: add columns that may not exist on older DBs
+from sqlalchemy import text as _text
+with engine.connect() as _conn:
+    for _col_sql in [
+        "ALTER TABLE pdi_responses ADD COLUMN kaydeden TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN hata_nerede_item TEXT",
+    ]:
+        try:
+            _conn.execute(_text(_col_sql))
+            _conn.commit()
+        except Exception:
+            pass
 
 app = FastAPI(title="PDI Web API (Mechanic Frontend)")
 
@@ -28,6 +41,7 @@ app.include_router(mechanic.router, prefix="/api/mechanic", tags=["Mechanic"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(imalat.router, prefix="/api/imalat", tags=["Imalat"])
+app.include_router(form.router, prefix="/api/form", tags=["Form"])
 
 @app.get("/")
 def read_root():
