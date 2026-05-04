@@ -27,7 +27,7 @@ def _today_str():
 @router.post("/sessions")
 def create_session(
     sasi_no: str = Form(None),
-    arac_tipi: str = Form(...),
+    arac_tipi: str = Form(None),
     is_emri_no: str = Form(None),
     bb_no: str = Form(None),
     imalat_no: str = Form(None),

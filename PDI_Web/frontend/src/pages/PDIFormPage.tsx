@@ -105,6 +105,7 @@ export default function PDIFormPage() {
     // UI
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
     const [errorToast, setErrorToast] = useState('');
+    const [saveSuccess, setSaveSuccess] = useState(false);
     const [step0Error, setStep0Error] = useState('');
     const [landingLoading, setLandingLoading] = useState(true);
     const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -329,6 +330,11 @@ export default function PDIFormPage() {
                 if (dr.aciklama) fd.append('aciklama', dr.aciklama);
                 await axios.post(`${API}/sessions/${sid}/dynamic-responses`, fd);
             }
+
+            // Başarı bildirimi
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 5000);
+
         } catch (err: any) {
             const msg = err?.response?.data?.detail || err?.message || 'Kayıt sırasında bir hata oluştu.';
             showError(msg);
@@ -768,11 +774,16 @@ export default function PDIFormPage() {
                         <img src="/mercedes-logo.svg" alt="" style={{ height: '32px', filter: 'brightness(0) invert(1)' }} />
                         <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>PDI FORM</span>
                     </div>
-                    <button
-                        onClick={() => setScreen('form')}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: C.petrol, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-                        <Plus size={15} /> Yeni PDI
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <a href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '8px', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'none' }}>
+                            <ChevronLeft size={14} /> Yönetici
+                        </a>
+                        <button
+                            onClick={() => setScreen('form')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: C.petrol, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+                            <Plus size={15} /> Yeni PDI
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ maxWidth: '560px', margin: '0 auto', padding: '24px 16px' }}>
@@ -863,19 +874,41 @@ export default function PDIFormPage() {
                     <button onClick={() => setErrorToast('')} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '4px', padding: 0 }}><X size={16} /></button>
                 </div>
             )}
+
+            {/* Başarı toast */}
+            {saveSuccess && (
+                <div style={{ position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: C.success, color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxWidth: '90vw', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <CheckCircle2 size={16} />
+                    Taslak kaydedildi!
+                    <button
+                        onClick={async () => { setSaveSuccess(false); const r = await axios.get(`${API}/sessions/active`).catch(() => ({ data: [] })); setActiveSessions(r.data as ActiveSession[]); setScreen('landing'); }}
+                        style={{ padding: '5px 12px', background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '6px', color: '#fff', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        Listeye Dön
+                    </button>
+                    <button onClick={() => setSaveSuccess(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}><X size={16} /></button>
+                </div>
+            )}
             <div style={{ background: C.black, height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', position: 'sticky', top: 0, zIndex: 100 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <img src="/mercedes-logo.svg" alt="" style={{ height: '28px', filter: 'brightness(0) invert(1)' }} />
-                    <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>PDI FORM</span>
-                    {aracTipi && <span style={{ color: C.petrol, fontWeight: 700, fontSize: '0.78rem', background: 'rgba(0,103,127,0.25)', padding: '2px 8px', borderRadius: '20px' }}>{aracTipi}</span>}
-                    {sessionId && <span style={{ color: C.grey60, fontSize: '0.7rem' }}>#{sessionId}</span>}
+                    <button onClick={saveAndExit} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px', borderRadius: '6px' }} title="PDI listesine dön">
+                        <ChevronLeft size={18} color={C.grey60} />
+                        <img src="/mercedes-logo.svg" alt="" style={{ height: '26px', filter: 'brightness(0) invert(1)' }} />
+                        <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>PDI FORM</span>
+                    </button>
+                    {aracTipi && <span style={{ color: C.petrol, fontWeight: 700, fontSize: '0.75rem', background: 'rgba(0,103,127,0.25)', padding: '2px 8px', borderRadius: '20px' }}>{aracTipi}</span>}
+                    {sessionId && <span style={{ color: C.grey60, fontSize: '0.68rem' }}>#{sessionId}</span>}
                 </div>
-                <button
-                    onClick={saveAndExit}
-                    disabled={saving}
-                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', background: saving ? C.grey60 : C.petrol, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem', cursor: saving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
-                    <Save size={13} /> {saving ? '...' : 'Kaydet ve Çık'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <a href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 10px', background: 'rgba(255,255,255,0.08)', color: C.grey60, border: '1px solid rgba(255,255,255,0.15)', borderRadius: '7px', fontWeight: 600, fontSize: '0.75rem', textDecoration: 'none' }}>
+                        Yönetici
+                    </a>
+                    <button
+                        onClick={saveAndExit}
+                        disabled={saving}
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', background: saving ? C.grey60 : C.petrol, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem', cursor: saving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                        <Save size={13} /> {saving ? '...' : 'Kaydet ve Çık'}
+                    </button>
+                </div>
             </div>
 
             {/* Step tabs */}
@@ -883,7 +916,7 @@ export default function PDIFormPage() {
                 {STEPS.map((s, i) => (
                     <button key={s.id} onClick={() => setStep(i)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 14px', whiteSpace: 'nowrap', border: 'none', background: 'none', borderBottom: `3px solid ${step === i ? C.petrol : 'transparent'}`, color: step === i ? C.petrol : C.grey60, fontWeight: step === i ? 700 : 500, fontSize: '0.8rem', cursor: 'pointer' }}>
                         {s.icon}
-                        <span style={{ display: 'none' }}>{s.label}</span>
+                        <span>{s.label}</span>
                         {i === 2 && countIssues() > 0 && <span style={{ background: C.error, color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.68rem', fontWeight: 700 }}>{countIssues()}</span>}
                     </button>
                 ))}
