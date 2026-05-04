@@ -258,7 +258,78 @@ export default function PDIFormPage() {
         }
     }
 
-    // ── Full save ─────────────────────────────────────────────────────────────
+    // ── Tüm veriyi kaydet (saving state YOK — çağıran yönetir) ───────────────
+    async function _persistData(): Promise<number> {
+        const sid = await ensureSession();
+
+        const headerFd = new FormData();
+        headerFd.append('arac_tipi', aracTipi);
+        if (sasiNo) headerFd.append('sasi_no', sasiNo);
+        if (isEmriNo) headerFd.append('is_emri_no', isEmriNo);
+        if (bbNo) headerFd.append('bb_no', bbNo);
+        if (imalatNo) headerFd.append('imalat_no', imalatNo);
+        if (waNo) headerFd.append('wa_no', waNo);
+        if (pdiPersonel) headerFd.append('pdi_personel', pdiPersonel);
+        if (akuTarihi) headerFd.append('aku_uretim_tarihi', akuTarihi);
+        if (yanginTupu) headerFd.append('yangin_tupu_tarihi', yanginTupu);
+        if (genelAciklamalar) headerFd.append('genel_aciklamalar', genelAciklamalar);
+        await axios.put(`${API}/sessions/${sid}`, headerFd);
+
+        if (formData) {
+            for (const section of formData.sections) {
+                const usta = sectionUsta[section.no]?.trim() || '';
+                for (const ss of section.subSections) {
+                    for (const item of ss.items) {
+                        const resp = responses[item.no];
+                        if (!resp?.durum) continue;
+                        const fd = new FormData();
+                        fd.append('item_no', item.no);
+                        fd.append('item_label', item.label);
+                        fd.append('alt_grup', section.altGrup);
+                        fd.append('durum', resp.durum);
+                        if (resp.ariza_tanimi) fd.append('ariza_tanimi', resp.ariza_tanimi);
+                        if (resp.hata_nerede_item) fd.append('hata_nerede_item', resp.hata_nerede_item);
+                        if (resp.olcum_ilk) fd.append('olcum_ilk', resp.olcum_ilk);
+                        if (resp.olcum_sonra) fd.append('olcum_sonra', resp.olcum_sonra);
+                        if (usta) fd.append('kaydeden', usta);
+                        await axios.post(`${API}/sessions/${sid}/responses`, fd);
+                        if (resp.photoFile) {
+                            const pfd = new FormData();
+                            pfd.append('photo', resp.photoFile);
+                            await axios.post(`${API}/sessions/${sid}/responses/${item.no}/photo`, pfd);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const pin of pins) {
+            if (pin.id) continue;
+            const fd = new FormData();
+            fd.append('view', pin.view);
+            fd.append('x_percent', pin.x_percent);
+            fd.append('y_percent', pin.y_percent);
+            if (pin.aciklama) fd.append('aciklama', pin.aciklama);
+            const pinRes = await axios.post(`${API}/sessions/${sid}/pins`, fd);
+            if (pin.photoFile) {
+                const pfd = new FormData();
+                pfd.append('photo', pin.photoFile);
+                await axios.post(`${API}/sessions/${sid}/pins/${pinRes.data.id}/photo`, pfd);
+            }
+        }
+
+        for (const [idStr, dr] of Object.entries(dynamicResponses)) {
+            const fd = new FormData();
+            fd.append('dynamic_item_id', idStr);
+            fd.append('kontrol_edildi', dr.kontrol_edildi ? '1' : '0');
+            if (dr.aciklama) fd.append('aciklama', dr.aciklama);
+            await axios.post(`${API}/sessions/${sid}/dynamic-responses`, fd);
+        }
+
+        return sid;
+    }
+
+    // ── Taslak kaydet (buton) ─────────────────────────────────────────────────
     async function saveAll() {
         if (!aracTipi) {
             showError('Araç tipi seçilmedi. Lütfen 1. adımdan araç tipini seçin.');
@@ -266,91 +337,24 @@ export default function PDIFormPage() {
         }
         setSaving(true);
         try {
-            const sid = await ensureSession();
-            const headerFd = new FormData();
-            headerFd.append('arac_tipi', aracTipi);
-            if (sasiNo) headerFd.append('sasi_no', sasiNo);
-            if (isEmriNo) headerFd.append('is_emri_no', isEmriNo);
-            if (bbNo) headerFd.append('bb_no', bbNo);
-            if (imalatNo) headerFd.append('imalat_no', imalatNo);
-            if (waNo) headerFd.append('wa_no', waNo);
-            if (pdiPersonel) headerFd.append('pdi_personel', pdiPersonel);
-            if (akuTarihi) headerFd.append('aku_uretim_tarihi', akuTarihi);
-            if (yanginTupu) headerFd.append('yangin_tupu_tarihi', yanginTupu);
-            if (genelAciklamalar) headerFd.append('genel_aciklamalar', genelAciklamalar);
-            await axios.put(`${API}/sessions/${sid}`, headerFd);
-
-            if (formData) {
-                for (const section of formData.sections) {
-                    const usta = sectionUsta[section.no]?.trim() || '';
-                    for (const ss of section.subSections) {
-                        for (const item of ss.items) {
-                            const resp = responses[item.no];
-                            if (!resp?.durum) continue;
-                            const fd = new FormData();
-                            fd.append('item_no', item.no);
-                            fd.append('item_label', item.label);
-                            fd.append('alt_grup', section.altGrup);
-                            fd.append('durum', resp.durum);
-                            if (resp.ariza_tanimi) fd.append('ariza_tanimi', resp.ariza_tanimi);
-                            if (resp.hata_nerede_item) fd.append('hata_nerede_item', resp.hata_nerede_item);
-                            if (resp.olcum_ilk) fd.append('olcum_ilk', resp.olcum_ilk);
-                            if (resp.olcum_sonra) fd.append('olcum_sonra', resp.olcum_sonra);
-                            if (usta) fd.append('kaydeden', usta);
-                            await axios.post(`${API}/sessions/${sid}/responses`, fd);
-                            if (resp.photoFile) {
-                                const pfd = new FormData();
-                                pfd.append('photo', resp.photoFile);
-                                await axios.post(`${API}/sessions/${sid}/responses/${item.no}/photo`, pfd);
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (const pin of pins) {
-                if (pin.id) continue;
-                const fd = new FormData();
-                fd.append('view', pin.view);
-                fd.append('x_percent', pin.x_percent);
-                fd.append('y_percent', pin.y_percent);
-                if (pin.aciklama) fd.append('aciklama', pin.aciklama);
-                const pinRes = await axios.post(`${API}/sessions/${sid}/pins`, fd);
-                if (pin.photoFile) {
-                    const pfd = new FormData();
-                    pfd.append('photo', pin.photoFile);
-                    await axios.post(`${API}/sessions/${sid}/pins/${pinRes.data.id}/photo`, pfd);
-                }
-            }
-
-            for (const [idStr, dr] of Object.entries(dynamicResponses)) {
-                const fd = new FormData();
-                fd.append('dynamic_item_id', idStr);
-                fd.append('kontrol_edildi', dr.kontrol_edildi ? '1' : '0');
-                if (dr.aciklama) fd.append('aciklama', dr.aciklama);
-                await axios.post(`${API}/sessions/${sid}/dynamic-responses`, fd);
-            }
-
-            // Başarı bildirimi
+            await _persistData();
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 5000);
-
+            setTimeout(() => setSaveSuccess(false), 6000);
         } catch (err: any) {
-            const msg = err?.response?.data?.detail || err?.message || 'Kayıt sırasında bir hata oluştu.';
-            showError(msg);
-            throw err;
+            showError(err?.response?.data?.detail || err?.message || 'Kayıt sırasında bir hata oluştu.');
         } finally {
             setSaving(false);
         }
     }
 
+    // ── Kaydet ve çık ────────────────────────────────────────────────────────
     async function saveAndExit() {
         if (aracTipi) {
             setSaving(true);
             try {
-                await saveAll();
-            } catch {
-                // saveAll already shows error toast; still navigate back
+                await _persistData();
+            } catch (err: any) {
+                showError(err?.response?.data?.detail || err?.message || 'Kayıt sırasında bir hata oluştu.');
             } finally {
                 setSaving(false);
             }
@@ -360,6 +364,7 @@ export default function PDIFormPage() {
         setScreen('landing');
     }
 
+    // ── Formu tamamla ────────────────────────────────────────────────────────
     async function completeForm() {
         if (!aracTipi) {
             showError('Araç tipi seçilmedi. Lütfen 1. adımdan araç tipini seçin.');
@@ -367,17 +372,13 @@ export default function PDIFormPage() {
         }
         setSaving(true);
         try {
-            await saveAll();
-            const sid = sessionId || await ensureSession();
+            const sid = await _persistData();
             const fd = new FormData();
             if (genelAciklamalar) fd.append('genel_aciklamalar', genelAciklamalar);
             await axios.post(`${API}/sessions/${sid}/complete`, fd);
             setCompleted(true);
         } catch (err: any) {
-            if (!errorToast) {
-                const msg = err?.response?.data?.detail || err?.message || 'Tamamlama sırasında bir hata oluştu.';
-                showError(msg);
-            }
+            showError(err?.response?.data?.detail || err?.message || 'Tamamlama sırasında bir hata oluştu.');
         } finally {
             setSaving(false);
         }
