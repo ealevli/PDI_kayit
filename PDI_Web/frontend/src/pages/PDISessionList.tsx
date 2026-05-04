@@ -73,6 +73,10 @@ export default function PDISessionList() {
         }
     }
 
+    function openForm(id: number) {
+        window.open(`/usta?session=${id}`, '_blank');
+    }
+
     async function openDetail(id: number) {
         setDetailLoading(true);
         try {
@@ -140,7 +144,7 @@ export default function PDISessionList() {
                                             background: selected?.id === s.id ? '#f0f9ff' : '#fff',
                                             cursor: 'pointer',
                                         }}
-                                        onClick={() => openDetail(s.id)}
+                                        onClick={() => s.durum === 'devam_ediyor' ? openForm(s.id) : openDetail(s.id)}
                                     >
                                         <td style={tdStyle}><span style={{ fontWeight: 700, color: '#374151' }}>#{s.id}</span></td>
                                         <td style={tdStyle}>{s.arac_tipi}</td>
@@ -162,9 +166,9 @@ export default function PDISessionList() {
                                         <td style={tdStyle}>
                                             <div style={{ display: 'flex', gap: '6px' }}>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); openDetail(s.id); }}
-                                                    style={actionBtn}
-                                                    title="Detay"
+                                                    onClick={(e) => { e.stopPropagation(); s.durum === 'devam_ediyor' ? openForm(s.id) : openDetail(s.id); }}
+                                                    style={s.durum === 'devam_ediyor' ? { ...actionBtn, color: '#00677f', borderColor: '#00677f', background: '#f0fafd' } : actionBtn}
+                                                    title={s.durum === 'devam_ediyor' ? 'Forma Git' : 'Detay'}
                                                 >
                                                     <Eye size={14} />
                                                 </button>

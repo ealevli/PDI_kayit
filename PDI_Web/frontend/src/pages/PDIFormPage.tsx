@@ -119,11 +119,22 @@ export default function PDIFormPage() {
 
     // ── Load ──────────────────────────────────────────────────────────────────
     useEffect(() => {
-        // Aktif session'ları yükle — tamamlanınca landing ekranı göster
-        axios.get(`${API}/sessions/active`)
-            .then(r => setActiveSessions(r.data))
-            .catch(() => {})
-            .finally(() => setLandingLoading(false));
+        // URL'de ?session=ID varsa direkt o session'ı yükle (admin listesinden yönlendirme)
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionParam = urlParams.get('session');
+
+        if (sessionParam) {
+            // URL'i temizle (history API ile, sayfa yenilenmeden)
+            window.history.replaceState({}, '', window.location.pathname);
+            setLandingLoading(false);
+            loadSession(Number(sessionParam)).catch(() => setLandingLoading(false));
+        } else {
+            // Aktif session'ları yükle — tamamlanınca landing ekranı göster
+            axios.get(`${API}/sessions/active`)
+                .then(r => setActiveSessions(r.data))
+                .catch(() => {})
+                .finally(() => setLandingLoading(false));
+        }
 
         axios.get(`${API}/dynamic-items`).then(r => setDynamicItems(r.data)).catch(() => {});
 
