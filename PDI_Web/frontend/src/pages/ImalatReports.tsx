@@ -88,6 +88,8 @@ const ImalatReports: React.FC = () => {
             });
             setShowEditModal(false);
             fetchOzet();
+            fetchOranlar();
+            fetchTopHata();
         } catch {
             alert("Hata oluştu.");
         }

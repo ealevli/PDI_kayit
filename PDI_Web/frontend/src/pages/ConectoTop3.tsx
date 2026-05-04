@@ -11,9 +11,12 @@ const MONTHS = [
     { id: 10, name: "Ekim" }, { id: 11, name: "Kasım" }, { id: 12, name: "Aralık" }
 ];
 
+type ViewMode = 'mtd' | 'ytd';
+
 const ConectoTop3: React.FC = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [viewMode, setViewMode] = useState<ViewMode>('mtd');
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -21,7 +24,7 @@ const ConectoTop3: React.FC = () => {
         setLoading(true);
         try {
             const res = await axios.get(`${API_BASE_URL}/reports/conecto-top3`, {
-                params: { month: selectedMonth, year: selectedYear }
+                params: { month: selectedMonth, year: selectedYear, mode: viewMode }
             });
             setData(res.data);
         } catch (err) {
@@ -33,11 +36,15 @@ const ConectoTop3: React.FC = () => {
 
     useEffect(() => {
         fetchReport();
-    }, [selectedMonth, selectedYear]);
+    }, [selectedMonth, selectedYear, viewMode]);
 
     if (loading && !data) return <div className="p-8 text-center text-white font-medium">Yükleniyor...</div>;
 
     const results = data?.results || [];
+    const monthName = MONTHS.find(m => m.id === selectedMonth)?.name ?? '';
+    const periodLabel = viewMode === 'ytd'
+        ? `${selectedYear} Ocak – ${monthName} (YTD)`
+        : `${selectedYear} ${monthName} (Aylık)`;
 
     return (
         <div className="p-6 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
@@ -48,25 +55,54 @@ const ConectoTop3: React.FC = () => {
                         <Award className="text-yellow-500" size={28} />
                         CONECTO TOP 3 HATA ANALİZİ
                     </h1>
-                    <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wider">Seçili Aya Ait En Kritik Odak Noktaları</p>
+                    <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wider">
+                        {viewMode === 'mtd' ? 'Seçili Aya Ait En Kritik Odak Noktaları' : 'Yılbaşından Seçili Aya Kümülatif Analiz (YTD)'}
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-gray-800">
-                    <Calendar size={18} className="text-gray-500 ml-2" />
-                    <select
-                        className="bg-transparent text-white px-3 py-1.5 focus:outline-none text-sm font-bold cursor-pointer"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                    >
-                        {MONTHS.map(m => <option key={m.id} value={m.id} className="bg-gray-900">{m.name}</option>)}
-                    </select>
-                    <select
-                        className="bg-transparent text-white px-3 py-1.5 focus:outline-none text-sm font-bold border-l border-gray-800 cursor-pointer"
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                    >
-                        {[2024, 2025, 2026].map(y => <option key={y} value={y} className="bg-gray-900">{y}</option>)}
-                    </select>
+                <div className="flex items-center gap-3">
+                    {/* YTD / MTD Toggle */}
+                    <div className="flex items-center bg-black/40 rounded-xl border border-gray-800 p-1">
+                        <button
+                            onClick={() => setViewMode('mtd')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                viewMode === 'mtd'
+                                    ? 'bg-emerald-500 text-white shadow-md'
+                                    : 'text-gray-500 hover:text-gray-300'
+                            }`}
+                        >
+                            MTD
+                        </button>
+                        <button
+                            onClick={() => setViewMode('ytd')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                viewMode === 'ytd'
+                                    ? 'bg-emerald-500 text-white shadow-md'
+                                    : 'text-gray-500 hover:text-gray-300'
+                            }`}
+                        >
+                            YTD
+                        </button>
+                    </div>
+
+                    {/* Month / Year selectors */}
+                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-gray-800">
+                        <Calendar size={18} className="text-gray-500 ml-2" />
+                        <select
+                            className="bg-transparent text-white px-3 py-1.5 focus:outline-none text-sm font-bold cursor-pointer"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                        >
+                            {MONTHS.map(m => <option key={m.id} value={m.id} className="bg-gray-900">{m.name}</option>)}
+                        </select>
+                        <select
+                            className="bg-transparent text-white px-3 py-1.5 focus:outline-none text-sm font-bold border-l border-gray-800 cursor-pointer"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        >
+                            {[2024, 2025, 2026].map(y => <option key={y} value={y} className="bg-gray-900">{y}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -78,13 +114,17 @@ const ConectoTop3: React.FC = () => {
 
                 <div className="relative z-10 text-center max-w-2xl mx-auto">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6">
-                        Performans Özeti
+                        {viewMode === 'ytd' ? 'YTD — Kümülatif Özet' : 'MTD — Aylık Özet'}
                     </div>
                     <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">
-                        {selectedYear} {MONTHS.find(m => m.id === selectedMonth)?.name} Dönemi
+                        {periodLabel}
                     </h2>
                     <p className="text-gray-400 text-lg leading-relaxed font-medium">
-                        Bu dönemde toplam <span className="text-white font-black underline decoration-emerald-500/50 decoration-4 underline-offset-4">{data?.total_errors}</span> hata kaydı analiz edilmiştir.
+                        Bu dönemde toplam{' '}
+                        <span className="text-white font-black underline decoration-emerald-500/50 decoration-4 underline-offset-4">
+                            {data?.total_errors}
+                        </span>{' '}
+                        hata kaydı analiz edilmiştir.
                     </p>
                 </div>
 
@@ -92,10 +132,11 @@ const ConectoTop3: React.FC = () => {
                     {results.map((r: any, idx: number) => (
                         <div key={r.hata_adi} className="group relative">
                             <div className="relative z-10 bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 transition-all duration-300 hover:border-emerald-500/40 hover:-translate-y-2 shadow-xl hover:shadow-emerald-500/10">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-2xl transition-transform group-hover:scale-110 ${idx === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-600' :
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-2xl transition-transform group-hover:scale-110 ${
+                                    idx === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-600' :
                                     idx === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500' :
-                                        'bg-gradient-to-br from-orange-400 to-red-800'
-                                    }`}>
+                                               'bg-gradient-to-br from-orange-400 to-red-800'
+                                }`}>
                                     <span className="text-2xl font-black text-white italic">#{idx + 1}</span>
                                 </div>
 

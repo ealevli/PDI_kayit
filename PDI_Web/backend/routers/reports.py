@@ -480,20 +480,31 @@ def get_error_trend(hata_adi: str = Query(...), month: int = Query(...), year: i
     return monthly_data
 
 @router.get("/conecto-top3")
-def get_conecto_top3(month: int = Query(None), year: int = Query(None), db: Session = Depends(get_db)):
+def get_conecto_top3(month: int = Query(None), year: int = Query(None), mode: str = Query("mtd"), db: Session = Depends(get_db)):
     """
-    Seçili AY'a ait Conecto top hata analizi (aylık, YTD değil).
+    Conecto top hata analizi.
+    mode=mtd → sadece seçili ay (varsayılan)
+    mode=ytd → yılın başından seçili aya kadar kümülatif
     tarih_saat formatı: DD-MM-YYYY HH:MM
     """
+    from sqlalchemy import cast, Integer as SAInteger
+
     date_filter = []
     if month and year:
-        m_str = f"{month:02d}"
         y_str = str(year)
-        # DD-MM-YYYY → pozisyon 4-5 = ay, 7-10 = yıl
-        date_filter = [
-            func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str,
-            func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str,
-        ]
+        m_str = f"{month:02d}"
+        if mode == "ytd":
+            # Yıl eşleşmeli VE ay <= seçili ay
+            date_filter = [
+                func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str,
+                cast(func.substr(models.PDIKayit.tarih_saat, 4, 2), SAInteger) <= month,
+            ]
+        else:
+            # MTD: sadece tam ay eşleşmesi
+            date_filter = [
+                func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str,
+                func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str,
+            ]
 
     base = db.query(models.PDIKayit).filter(models.PDIKayit.arac_tipi == 'Conecto')
     if date_filter:
@@ -520,7 +531,7 @@ def get_conecto_top3(month: int = Query(None), year: int = Query(None), db: Sess
         oran = cnt / total_errors if total_errors > 0 else 0
         results.append({'hata_adi': hata, 'ytd_sayi': cnt, 'oran': oran})
 
-    return {'results': results, 'total_errors': total_errors}
+    return {'results': results, 'total_errors': total_errors, 'mode': mode}
 
 @router.get("/imalat")
 def get_imalat_report(month: int = Query(...), year: int = Query(...), db: Session = Depends(get_db)):
@@ -556,6 +567,12 @@ def get_imalat_report(month: int = Query(...), year: int = Query(...), db: Sessi
 
 @router.get("/imalat-oranlar")
 def get_imalat_oranlar(year1: int = Query(...), year2: int = Query(...), db: Session = Depends(get_db)):
+    # Manual overrides: vehicle_count = imalat'a gönderilen araç sayısı (pay)
+    imalat_overrides = db.query(models.ReportManualData).filter(
+        models.ReportManualData.report_type == "imalat"
+    ).all()
+    imalat_override_dict = {f"{o.context_key}_{o.data_key}": o.data_value for o in imalat_overrides}
+
     month_names = ["", "OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"]
     result = []
     for m in range(1, 13):
@@ -563,19 +580,29 @@ def get_imalat_oranlar(year1: int = Query(...), year2: int = Query(...), db: Ses
         row = {"month": month_names[m]}
         for yr in [year1, year2]:
             y_str = str(yr)
+            ctx_key = f"{yr}-{m_str}"
+
+            # Toplam araç sayısı (tüm PDI kayıtları, override yok)
             total = db.query(func.count(func.distinct(models.PDIKayit.sasi_no))).filter(
                 or_(
                     (func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str),
                     (func.substr(models.PDIKayit.tarih_saat, 6, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 1, 4) == y_str)
                 )
             ).scalar() or 0
-            imalat = db.query(func.count(func.distinct(models.PDIKayit.sasi_no))).filter(
-                models.PDIKayit.hata_nerede == "İmalat",
-                or_(
-                    (func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str),
-                    (func.substr(models.PDIKayit.tarih_saat, 6, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 1, 4) == y_str)
-                )
-            ).scalar() or 0
+
+            # İmalat araç sayısı — override varsa onu kullan
+            ov_imalat = imalat_override_dict.get(f"{ctx_key}_vehicle_count")
+            if ov_imalat is not None and str(ov_imalat).strip():
+                imalat = parse_int(ov_imalat)
+            else:
+                imalat = db.query(func.count(func.distinct(models.PDIKayit.sasi_no))).filter(
+                    models.PDIKayit.hata_nerede == "İmalat",
+                    or_(
+                        (func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str),
+                        (func.substr(models.PDIKayit.tarih_saat, 6, 2) == m_str) & (func.substr(models.PDIKayit.tarih_saat, 1, 4) == y_str)
+                    )
+                ).scalar() or 0
+
             pct = round((imalat / total * 100), 1) if total > 0 else None
             row[f"year{yr}"] = pct
         result.append(row)
