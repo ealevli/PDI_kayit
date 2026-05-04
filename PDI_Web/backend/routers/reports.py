@@ -481,21 +481,25 @@ def get_error_trend(hata_adi: str = Query(...), month: int = Query(...), year: i
 
 @router.get("/conecto-top3")
 def get_conecto_top3(month: int = Query(None), year: int = Query(None), db: Session = Depends(get_db)):
+    """
+    Seçili AY'a ait Conecto top hata analizi (aylık, YTD değil).
+    tarih_saat formatı: DD-MM-YYYY HH:MM
+    """
     date_filter = []
     if month and year:
         m_str = f"{month:02d}"
         y_str = str(year)
+        # DD-MM-YYYY → pozisyon 4-5 = ay, 7-10 = yıl
         date_filter = [
-            or_(
-                (func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str) & (func.cast(func.substr(models.PDIKayit.tarih_saat, 4, 2), models.Integer) <= month),
-                (func.substr(models.PDIKayit.tarih_saat, 1, 4) == y_str) & (func.cast(func.substr(models.PDIKayit.tarih_saat, 6, 2), models.Integer) <= month)
-            )
+            func.substr(models.PDIKayit.tarih_saat, 7, 4) == y_str,
+            func.substr(models.PDIKayit.tarih_saat, 4, 2) == m_str,
         ]
 
-    query_total = db.query(func.count(models.PDIKayit.id)).filter(models.PDIKayit.arac_tipi == 'Conecto')
+    base = db.query(models.PDIKayit).filter(models.PDIKayit.arac_tipi == 'Conecto')
     if date_filter:
-        query_total = query_total.filter(*date_filter)
-    total_errors = query_total.scalar() or 0
+        base = base.filter(*date_filter)
+
+    total_errors = base.count()
 
     query_top = db.query(
         models.PDIKayit.top_hata,
@@ -507,8 +511,9 @@ def get_conecto_top3(month: int = Query(None), year: int = Query(None), db: Sess
     )
     if date_filter:
         query_top = query_top.filter(*date_filter)
-    
-    top_hatalar = query_top.group_by(models.PDIKayit.top_hata).order_by(func.count(models.PDIKayit.id).desc()).limit(3).all()
+
+    top_hatalar = query_top.group_by(models.PDIKayit.top_hata)\
+        .order_by(func.count(models.PDIKayit.id).desc()).limit(3).all()
 
     results = []
     for hata, cnt in top_hatalar:

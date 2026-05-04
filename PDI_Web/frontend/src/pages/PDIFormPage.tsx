@@ -876,6 +876,22 @@ export default function PDIFormPage() {
                 </div>
             )}
 
+            {/* Saving progress bar + badge */}
+            {saving && (
+                <>
+                    <style>{`@keyframes pdi-slide{0%{left:-65%}55%{left:100%}100%{left:100%}}@keyframes pdi-spin{to{transform:rotate(360deg)}}`}</style>
+                    {/* Thin sliding bar just below the sticky header */}
+                    <div style={{ position: 'fixed', top: '52px', left: 0, right: 0, height: '3px', zIndex: 9998, background: 'rgba(0,103,127,0.18)', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', top: 0, left: '-65%', width: '65%', height: '100%', background: C.petrol, borderRadius: '0 3px 3px 0', animation: 'pdi-slide 1.25s ease-in-out infinite' }} />
+                    </div>
+                    {/* Floating pill above the bottom nav bar */}
+                    <div style={{ position: 'fixed', bottom: '76px', left: '50%', transform: 'translateX(-50%)', zIndex: 9998, background: C.black, color: '#fff', padding: '10px 20px', borderRadius: '30px', fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 6px 20px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                        <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'pdi-spin 0.75s linear infinite', flexShrink: 0 }} />
+                        Kaydediliyor...
+                    </div>
+                </>
+            )}
+
             {/* Başarı toast */}
             {saveSuccess && (
                 <div style={{ position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: C.success, color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxWidth: '90vw', display: 'flex', alignItems: 'center', gap: '12px' }}>

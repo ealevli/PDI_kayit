@@ -48,7 +48,7 @@ const ConectoTop3: React.FC = () => {
                         <Award className="text-yellow-500" size={28} />
                         CONECTO TOP 3 HATA ANALİZİ
                     </h1>
-                    <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wider">Yılbaşından Bugüne (YTD) En Kritik Odak Noktaları</p>
+                    <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wider">Seçili Aya Ait En Kritik Odak Noktaları</p>
                 </div>
 
                 <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-gray-800">
