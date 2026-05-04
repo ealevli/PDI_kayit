@@ -963,9 +963,19 @@ export default function PDIFormPage() {
                         {i === 2 && countIssues() > 0 && <span style={{ background: C.error, color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.68rem', fontWeight: 700 }}>{countIssues()}</span>}
                     </button>
                 ))}
-                {/* Step label */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: '14px', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.grey80 }}>{STEPS[step].label}</span>
+                {/* Admin shortcut — tab bar sağı */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: '10px', justifyContent: 'flex-end', gap: '10px' }}>
+                    <a
+                        href="/admin"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            padding: '5px 12px', background: C.black, color: '#fff',
+                            borderRadius: '20px', fontWeight: 700, fontSize: '0.75rem',
+                            textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+                        }}
+                    >
+                        🏠 Yönetici
+                    </a>
                 </div>
             </div>
 
