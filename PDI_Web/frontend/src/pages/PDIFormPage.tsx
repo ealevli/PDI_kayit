@@ -927,8 +927,8 @@ export default function PDIFormPage() {
                     {sessionId && <span style={{ color: C.grey60, fontSize: '0.68rem' }}>#{sessionId}</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <a href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 10px', background: 'rgba(255,255,255,0.08)', color: C.grey60, border: '1px solid rgba(255,255,255,0.15)', borderRadius: '7px', fontWeight: 600, fontSize: '0.75rem', textDecoration: 'none' }}>
-                        Yönetici
+                    <a href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '7px', fontWeight: 700, fontSize: '0.78rem', textDecoration: 'none' }}>
+                        🏠 Yönetici
                     </a>
                     <button
                         onClick={saveAndExit}
@@ -938,6 +938,21 @@ export default function PDIFormPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Fixed admin shortcut — her adımda görünür */}
+            <a
+                href="/admin"
+                style={{
+                    position: 'fixed', bottom: '80px', right: '16px', zIndex: 9990,
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '9px 14px', background: C.black, color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)', borderRadius: '30px',
+                    fontWeight: 700, fontSize: '0.76rem', textDecoration: 'none',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                }}
+            >
+                🏠 Yönetici
+            </a>
 
             {/* Step tabs */}
             <div style={{ background: '#fff', borderBottom: `1px solid ${C.grey20}`, display: 'flex', overflowX: 'auto' }}>
