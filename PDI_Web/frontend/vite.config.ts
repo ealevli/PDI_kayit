@@ -8,4 +8,10 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  server: {
+    // Dev modda tarayıcı cache'i devre dışı bırak
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  },
 })

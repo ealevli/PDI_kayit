@@ -46,7 +46,7 @@ echo "▶ Frontend başlatılıyor (port 5173)..."
         echo "  npm paketleri yükleniyor (ilk kez uzun sürebilir)..."
         npm install
     fi
-    npm run dev -- --host --port 5173
+    npm run dev -- --host --port 5173 --force
 ) &
 
 sleep 4
