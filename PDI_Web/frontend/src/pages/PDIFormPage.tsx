@@ -99,13 +99,14 @@ export default function PDIFormPage() {
     const [akuTarihi, setAkuTarihi] = useState('');
     const [yanginTupu, setYanginTupu] = useState('');
 
-    // Lookups
-    const [hataNeredeler, setHataNeredeler] = useState<string[]>([]);
+    // Lookups — varsayılan değerlerle başlat (API başarısız olsa bile dropdown çalışır)
+    const [hataNeredeler, setHataNeredeler] = useState<string[]>(['TUM', 'İmalat', 'Diğer']);
 
     // UI
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
     const [errorToast, setErrorToast] = useState('');
     const [step0Error, setStep0Error] = useState('');
+    const [landingLoading, setLandingLoading] = useState(true);
     const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     function showError(msg: string) {
@@ -117,11 +118,21 @@ export default function PDIFormPage() {
 
     // ── Load ──────────────────────────────────────────────────────────────────
     useEffect(() => {
-        axios.get(`${API}/sessions/active`).then(r => setActiveSessions(r.data)).catch(() => {});
+        // Aktif session'ları yükle — tamamlanınca landing ekranı göster
+        axios.get(`${API}/sessions/active`)
+            .then(r => setActiveSessions(r.data))
+            .catch(() => {})
+            .finally(() => setLandingLoading(false));
+
         axios.get(`${API}/dynamic-items`).then(r => setDynamicItems(r.data)).catch(() => {});
+
+        // Hata nerede lookup — API değerleriyle varsayılanın üstüne yaz
         axios.get(`${ADMIN_API}/lookups/hata-nerede`)
-            .then(r => setHataNeredeler(r.data.map((x: any) => x.name)))
-            .catch(() => setHataNeredeler(['TUM', 'İmalat', 'Diğer']));
+            .then(r => {
+                const names = r.data.map((x: any) => x.name).filter(Boolean);
+                if (names.length > 0) setHataNeredeler(names);
+            })
+            .catch(() => {}); // varsayılan zaten set edildi
     }, []);
 
     // ── Session management ────────────────────────────────────────────────────
@@ -752,6 +763,13 @@ export default function PDIFormPage() {
                 <div style={{ maxWidth: '560px', margin: '0 auto', padding: '24px 16px' }}>
                     <h2 style={{ fontWeight: 800, fontSize: '1.3rem', marginBottom: '4px' }}>PDI Kontrol Formu</h2>
                     <p style={{ color: C.grey60, fontSize: '0.85rem', marginBottom: '24px' }}>Mevcut bir PDI'ya devam edin veya yeni başlatın.</p>
+
+                    {/* Yükleniyor */}
+                    {landingLoading && (
+                        <div style={{ textAlign: 'center', padding: '20px', color: C.grey60, fontSize: '0.85rem' }}>
+                            Devam eden PDI'lar yükleniyor...
+                        </div>
+                    )}
 
                     {/* Continue by sasi no */}
                     <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '16px', border: `1px solid ${C.grey20}` }}>

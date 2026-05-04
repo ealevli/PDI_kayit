@@ -12,14 +12,33 @@ Base.metadata.create_all(bind=engine)
 from sqlalchemy import text as _text
 with engine.connect() as _conn:
     for _col_sql in [
+        # pdi_responses — tüm yeni kolonlar (eski DB'de eksik olabilir)
+        "ALTER TABLE pdi_responses ADD COLUMN item_label TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN durum TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN ariza_tanimi TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN top_hata TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN alt_grup TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN fotograf_yolu TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN olcum_ilk TEXT",
+        "ALTER TABLE pdi_responses ADD COLUMN olcum_sonra TEXT",
         "ALTER TABLE pdi_responses ADD COLUMN kaydeden TEXT",
         "ALTER TABLE pdi_responses ADD COLUMN hata_nerede_item TEXT",
+        # pdi_sessions
+        "ALTER TABLE pdi_sessions ADD COLUMN imalat_no TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN wa_no TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN aku_uretim_tarihi TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN yangin_tupu_tarihi TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN genel_aciklamalar TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN guncelleme_tarihi TEXT",
+        "ALTER TABLE pdi_sessions ADD COLUMN synced INTEGER DEFAULT 1",
+        # pdi_kayitlari
+        "ALTER TABLE pdi_kayitlari ADD COLUMN pdi_session_id INTEGER",
     ]:
         try:
             _conn.execute(_text(_col_sql))
             _conn.commit()
         except Exception:
-            pass
+            pass  # Kolon zaten varsa hata yok sayılır
 
 app = FastAPI(title="PDI Web API (Mechanic Frontend)")
 
