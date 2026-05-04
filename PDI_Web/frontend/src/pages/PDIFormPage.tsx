@@ -430,16 +430,20 @@ export default function PDIFormPage() {
                             {item.measureNote && <span style={{ marginLeft: '6px', fontSize: '0.75rem', color: C.petrol, fontWeight: 600 }}>({item.measureNote})</span>}
                         </p>
 
-                        {/* Info fields */}
-                        {item.type === 'info' && (
-                            <input
-                                type="text"
-                                placeholder={item.label}
-                                value={item.no.includes('3.1.7') || item.no.includes('3.1.6') ? akuTarihi : yanginTupu}
-                                onChange={e => { if (item.no.includes('3.1.7') || item.no.includes('3.1.6')) setAkuTarihi(e.target.value); else setYanginTupu(e.target.value); }}
-                                style={inputStyle}
-                            />
-                        )}
+                        {/* Info fields — tarih seçici */}
+                        {item.type === 'info' && (() => {
+                            const isAku = item.no.includes('3.1.7') || item.no.includes('3.1.6');
+                            const val = isAku ? akuTarihi : yanginTupu;
+                            const setVal = isAku ? setAkuTarihi : setYanginTupu;
+                            return (
+                                <input
+                                    type="date"
+                                    value={val}
+                                    onChange={e => setVal(e.target.value)}
+                                    style={{ ...inputStyle, colorScheme: 'light' }}
+                                />
+                            );
+                        })()}
 
                         {/* Measurement */}
                         {item.type === 'measurement' && (
@@ -710,6 +714,17 @@ export default function PDIFormPage() {
                             <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: textColor as string }}>{val}</p>
                         </div>
                     ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                    <div>
+                        <label style={labelStyle}>Akü Üretim Tarihi</label>
+                        <input type="date" value={akuTarihi} onChange={e => setAkuTarihi(e.target.value)} style={{ ...inputStyle, colorScheme: 'light' }} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Yangın Tüpü Kontrol Tarihi</label>
+                        <input type="date" value={yanginTupu} onChange={e => setYanginTupu(e.target.value)} style={{ ...inputStyle, colorScheme: 'light' }} />
+                    </div>
                 </div>
 
                 <label style={labelStyle}>Genel Açıklamalar</label>

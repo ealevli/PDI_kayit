@@ -5,10 +5,11 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/.env
 
-# Database (canlı veri — repo'ya girmesin)
-database/*.db
+# Database WAL/SHM dosyaları (geçici, repoya girmesin)
 database/*.db-shm
 database/*.db-wal
+# backend/ klasöründeki eski/yanlış DB dosyaları
+backend/*.db
 
 # Uploaded photos
 backend/static/photos/

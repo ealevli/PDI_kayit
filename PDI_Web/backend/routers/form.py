@@ -206,16 +206,22 @@ def complete_session(
         db.commit()
         return {"message": "Zaten tamamlandı.", "kayit_count": 0}
 
-    arizali = db.query(models.PDIResponse).filter(
+    # Arızalı + Giderildi maddelerin hepsi kayıta düşer
+    kayit_edilecek = db.query(models.PDIResponse).filter(
         models.PDIResponse.session_id == session_id,
-        models.PDIResponse.durum == "arizali"
+        models.PDIResponse.durum.in_(["arizali", "giderildi"])
     ).all()
 
     created_ids = []
 
-    if arizali:
-        # Her arızalı madde → ayrı pdi_kayitlari satırı (rapor granülaritesi korunur)
-        for r in arizali:
+    if kayit_edilecek:
+        for r in kayit_edilecek:
+            # Giderildi ise nerede giderildiğini kullan; arızalı ise "TUM" (PDI tespit etti)
+            if r.durum == "giderildi":
+                hata_nerede = r.hata_nerede_item or "TUM"
+            else:
+                hata_nerede = "TUM"
+
             kayit = models.PDIKayit(
                 sasi_no=s.sasi_no,
                 arac_tipi=s.arac_tipi,
@@ -226,8 +232,8 @@ def complete_session(
                 hata_konumu=r.item_label or r.item_no,
                 fotograf_yolu=r.fotograf_yolu,
                 tarih_saat=s.tarih,
-                kullanici=s.pdi_personel or "Usta (Form)",
-                hata_nerede="TUM",
+                kullanici=r.kaydeden or s.pdi_personel or "Usta (Form)",
+                hata_nerede=hata_nerede,
                 alt_grup=r.alt_grup or "Genel",
                 top_hata=r.top_hata,
                 pdi_session_id=session_id,
